@@ -8,6 +8,7 @@ serverSocket.bind(('', serverPort))
 print('The server is ready to receive')
 
 rcv_base = 0  # next sequence number we wait for
+dup_count = 0
 
 while True:
     message, clientAddress = serverSocket.recvfrom(2048)
@@ -15,7 +16,14 @@ while True:
     print(seq_n)
     if seq_n == rcv_base: # in order delivery
         rcv_base = seq_n + 1 
-    serverSocket.sendto(str(rcv_base-1).encode(), clientAddress) # send cumulative ack
+    else:
+        dup_count += 1
+    
+    if dup_count >= 3:
+        serverSocket.sendto(str(-1).encode(), clientAddress)
+        dup_count = 0
+    else:    
+        serverSocket.sendto(str(rcv_base-1).encode(), clientAddress) # send cumulative ack
     if seq_n == 999:
         break;
 

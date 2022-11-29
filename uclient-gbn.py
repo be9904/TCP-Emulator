@@ -42,7 +42,6 @@ def handling_ack():
        
         if sent_time[send_base] != 0: 
             pkt_delay = time.time() - sent_time[send_base]
-     
             
         if pkt_delay > timeout_interval and timeout_flag == 0:    # timeout detected
             print("timeout detected:", str(send_base), flush=True)
@@ -61,6 +60,11 @@ def handling_ack():
                 estimated_rtt = (1-alpha)*estimated_rtt + alpha*pkt_delay
                 dev_rtt = (1-beta)*dev_rtt + beta*abs(pkt_delay-estimated_rtt)
             timeout_interval = estimated_rtt + 4*dev_rtt
+            
+            # 3 dup acks
+            if ack_n == -1:
+                # retransmit
+                pass
             #print("timeout interval:", str(timeout_interval), flush=True)
 
             
