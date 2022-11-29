@@ -12,20 +12,28 @@ dup_count = 0
 
 while True:
     message, clientAddress = serverSocket.recvfrom(2048)
-    seq_n = int(message.decode()) # extract sequence number
+    
+    # extract sequence number
+    seq_n = int(message.decode())
     print(seq_n)
-    if seq_n == rcv_base: # in order delivery
+
+    # in order delivery
+    if seq_n == rcv_base:
         rcv_base = seq_n + 1 
     else:
         dup_count += 1
     
+    # check dup
     if dup_count >= 3:
-        serverSocket.sendto(str(-1).encode(), clientAddress)
+        # serverSocket.sendto(str(-1).encode(), clientAddress)
+        print('dup_count:', dup_count)
         dup_count = 0
     else:    
         serverSocket.sendto(str(rcv_base-1).encode(), clientAddress) # send cumulative ack
-    if seq_n == 999:
-        break;
+    
+    # break loop on last packet
+    if seq_n == 99:
+        break
 
 serverSocket.close()
 
