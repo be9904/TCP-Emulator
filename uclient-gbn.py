@@ -38,6 +38,7 @@ def handling_ack():
     
     # dup count
     dup_count = 0
+    prev_ack = 0
 
     # pkt delay time
     pkt_delay = 0
@@ -53,16 +54,10 @@ def handling_ack():
             pkt_delay = time.time() - sent_time[send_base]
         # elif sent_time[send_base-1] != 0:
         #     dup_count += 1
-
-        # check 3 dup acks
-        if dup_count >= 3:
-            print('3 dup acks detected:', str(dup_count), flush=True)
-            dup_count = 0
-            continue
-            # retransmit
         
         # timeout detected
         if pkt_delay > timeout_interval and timeout_flag == 0:
+            # always timeout on first packet??
             print("timeout detected:", str(send_base), flush=True)
             print("timeout interval:", str(timeout_interval), flush=True)
             timeout_flag = 1
@@ -73,8 +68,18 @@ def handling_ack():
             ack_n = int(ack.decode())
             print(ack_n, flush=True)
             
-            # does rtt update on 3 dup acks?
+            # does rtt update on 3 dup acks? -> no, ignore retransmissions
             # implement condition for updating dup_count
+            if prev_ack == ack_n:
+                dup_count += 1
+            prev_ack = ack_n
+
+            # check 3 dup acks
+            if dup_count > 3:
+                print('3 dup acks detected', flush=True)
+                dup_count = 0
+                continue
+                # retransmit
             
             # estimated rtt based on init rtt
             if init_rtt_flag == 1:
@@ -117,8 +122,8 @@ while seq < no_pkt:
         seq = seq + 1
 
         # wait
-        time.sleep(0.1)
-        print('seq:', seq,", send_base:", send_base)
+        # time.sleep(0.1)
+        # print('seq:', seq,", send_base:", send_base)
         
     # retransmission
     if timeout_flag == 1:
