@@ -36,6 +36,9 @@ def handling_ack():
     # timeout interval
     timeout_interval = 10
     
+    # dup count
+    dup_count = 0
+
     # pkt delay time
     pkt_delay = 0
 
@@ -48,6 +51,15 @@ def handling_ack():
         # update pkt delay time
         if sent_time[send_base] != 0: 
             pkt_delay = time.time() - sent_time[send_base]
+        # elif sent_time[send_base-1] != 0:
+        #     dup_count += 1
+
+        # check 3 dup acks
+        if dup_count >= 3:
+            print('3 dup acks detected:', str(dup_count), flush=True)
+            dup_count = 0
+            continue
+            # retransmit
         
         # timeout detected
         if pkt_delay > timeout_interval and timeout_flag == 0:
@@ -61,6 +73,9 @@ def handling_ack():
             ack_n = int(ack.decode())
             print(ack_n, flush=True)
             
+            # does rtt update on 3 dup acks?
+            # implement condition for updating dup_count
+            
             # estimated rtt based on init rtt
             if init_rtt_flag == 1:
                 estimated_rtt = pkt_delay
@@ -68,12 +83,7 @@ def handling_ack():
             else:
                 estimated_rtt = (1-alpha)*estimated_rtt + alpha*pkt_delay
                 dev_rtt = (1-beta)*dev_rtt + beta*abs(pkt_delay-estimated_rtt)
-            timeout_interval = estimated_rtt + 4*dev_rtt
-            
-            # 3 dup acks
-            if ack_n == -1:
-                # retransmit
-                pass
+            timeout_interval = estimated_rtt + 4*dev_rtt            
             #print("timeout interval:", str(timeout_interval), flush=True)
 
             
