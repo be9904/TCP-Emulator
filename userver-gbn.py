@@ -1,5 +1,6 @@
 from socket import *
 from threading import Thread
+import time
 
 serverPort = 12000
 
@@ -10,6 +11,7 @@ print('The server is ready to receive')
 
 rcv_base = 0  # next sequence number we wait for
 win = 20
+queue_delay = 0.01
 
 class ServerQueue():
     def __init__(self, size):
@@ -34,6 +36,7 @@ while True:
     seq_n = int(message.decode())
     print(seq_n)
 
+    time.sleep(queue_delay)
     # in order delivery
     if seq_n == rcv_base:
         if sq.enqueue(seq_n):

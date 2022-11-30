@@ -108,7 +108,7 @@ def handling_ack():
                 continue
                 # retransmit
             
-            print('win:',win,', ssthresh:',ssthresh)
+            # print('win:',win,', ssthresh:',ssthresh)
             if win >= ssthresh:
                 win += 1
             else:
