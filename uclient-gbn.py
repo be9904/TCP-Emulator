@@ -54,7 +54,7 @@ def handling_ack():
         # update pkt delay time
         if sent_time[send_base] != 0: 
             pkt_delay = time.time() - sent_time[send_base]
-        
+
         # timeout detected
         if pkt_delay > timeout_interval and timeout_flag == 0:
             # always timeout on first packet??
@@ -82,14 +82,17 @@ def handling_ack():
                 continue
                 # retransmit
             
+            print('before computation timeout_interval:', str(timeout_interval)) 
             # estimated rtt based on init rtt
             if init_rtt_flag == 1:
                 estimated_rtt = pkt_delay
+                print('estimated rtt:', estimated_rtt)
                 init_rtt_flag = 0
             else:
                 estimated_rtt = (1-alpha)*estimated_rtt + alpha*pkt_delay
                 dev_rtt = (1-beta)*dev_rtt + beta*abs(pkt_delay-estimated_rtt)
             timeout_interval = estimated_rtt + 4*dev_rtt      
+            print(send_base, ":", timeout_interval)
             print('computed timeout_interval:', str(timeout_interval))      
             #print("timeout interval:", str(timeout_interval), flush=True)
 
