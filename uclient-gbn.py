@@ -9,11 +9,12 @@ serverPort = 12000
 clientPort = 12001
 
 win = 1      # window size
+ssthresh = 30
 win_plot = []
 no_pkt = 1000 # the total number of packets to send
 pkt_plot = [i for i in range(no_pkt)]
 send_base = 0 # oldest packet sent
-loss_rate = 0.01 # loss rate
+loss_rate = 0.05 # loss rate
 seq = 0        # initial sequence number
 tdupack_flag = 0 # 3 dup ack trigger
 timeout_flag = 0 # timeout trigger
@@ -42,6 +43,7 @@ def handling_ack():
     global sent_time
     global latency_sum
     global win
+    global ssthresh
 
     # constants
     alpha = 0.125
@@ -97,12 +99,23 @@ def handling_ack():
                 dup_count = 0
                 tdupack_flag = 1
                 lost_pkts_td.append(ack_n+1)
-                win = win//2
+                ssthresh = win//2
+                if random.random() < 0.5:
+                    win = win//2 if win > 1 else ssthresh
+                else:
+                    win = 1
                 win_plot.append(win)
                 continue
                 # retransmit
             
-            win += 1
+            print('win:',win,', ssthresh:',ssthresh)
+            if win >= ssthresh:
+                win += 1
+            else:
+                if win * 2 > ssthresh:
+                    win = ssthresh
+                else:
+                    win *= 2
             win_plot.append(win)
             latency_sum += pkt_delay
 
@@ -117,6 +130,7 @@ def handling_ack():
                 estimated_rtt = (1-alpha)*estimated_rtt + alpha*pkt_delay
                 dev_rtt = (1-beta)*dev_rtt + beta*abs(pkt_delay-estimated_rtt)
             timeout_interval = estimated_rtt + 4*dev_rtt      
+
             # print(send_base, ":", timeout_interval)
             # print('computed timeout_interval:', str(timeout_interval))      
             # print("timeout interval:", str(timeout_interval), flush=True)
@@ -190,6 +204,9 @@ while seq < no_pkt:
         # log seq number
         print("retransmission(timeout):", str(seq), flush=True)
         print('-------------------------------------')
+
+        ssthresh = win//2 if win > 1 else ssthresh
+        win = 1
         
         # update seq number and reset timeout flag
         seq = seq + 1
@@ -211,7 +228,7 @@ print('throughput:', no_pkt/latency_sum)
 print ("done")
 print('-------------------------------------')
 
-win_plot = win_plot[:1000]
+win_plot = win_plot[:no_pkt]
 
 plt.plot(pkt_plot, win_plot)
 plt.xlabel('pkt num')
