@@ -2,13 +2,16 @@ from socket import *
 from threading import Thread
 import random
 import time
+import matplotlib.pyplot as plt
 
 serverIP = '127.0.0.1' # special IP for local host
 serverPort = 12000
 clientPort = 12001
 
-win = 10      # window size
-no_pkt = 100 # the total number of packets to send
+win = 1      # window size
+win_plot = []
+no_pkt = 1000 # the total number of packets to send
+pkt_plot = [i for i in range(no_pkt)]
 send_base = 0 # oldest packet sent
 loss_rate = 0.01 # loss rate
 seq = 0        # initial sequence number
@@ -16,7 +19,7 @@ tdupack_flag = 0 # 3 dup ack trigger
 timeout_flag = 0 # timeout trigger
 
 tri_dup_mode = True
-timeout_mode = True
+# timeout_mode = True
 
 sent_time = [0 for i in range(2000)]
 dup_count = 0
@@ -38,6 +41,7 @@ def handling_ack():
     global timeout_flag
     global sent_time
     global latency_sum
+    global win
 
     # constants
     alpha = 0.125
@@ -65,7 +69,7 @@ def handling_ack():
             pkt_delay = time.time() - sent_time[send_base]
 
         # timeout detected
-        if pkt_delay > timeout_interval and timeout_flag == 0 and timeout_mode:
+        if pkt_delay > timeout_interval and timeout_flag == 0:
             # always timeout on first packet??
             print("timeout detected:", str(send_base), flush=True)
             print("timeout interval:", str(timeout_interval), flush=True)
@@ -93,9 +97,13 @@ def handling_ack():
                 dup_count = 0
                 tdupack_flag = 1
                 lost_pkts_td.append(ack_n+1)
+                win = win//2
+                win_plot.append(win)
                 continue
                 # retransmit
             
+            win += 1
+            win_plot.append(win)
             latency_sum += pkt_delay
 
             # print('before computation timeout_interval:', str(timeout_interval)) 
@@ -166,10 +174,10 @@ while seq < no_pkt:
             tdupack_flag = 0
 
         # wait
-        time.sleep(0.02)
+        time.sleep(0.01)
 
     # retransmission
-    if timeout_flag == 1 and timeout_mode:
+    if timeout_flag == 1:
         # update seq number
         seq = send_base 
         
@@ -190,12 +198,26 @@ while seq < no_pkt:
 # terminating thread
 th_handling_ack.join()
 
-print('3 dup loss:', lost_pkts_td)
-print('timeout loss:', lost_pkts_to)
-print('average latency:', latency_sum/no_pkt)
+if tri_dup_mode:
+    print('fast retransmit mode(3 dup acks)')
+    print('3 dup loss:', len(lost_pkts_td))
+else:
+    print('timeout mode')
+    print('timeout loss:', len(lost_pkts_to))
+print('loss rate:', loss_rate)
+print('-------------------------------------')
+print('latency:', latency_sum/no_pkt)
 print('throughput:', no_pkt/latency_sum)
 print ("done")
 print('-------------------------------------')
+
+win_plot = win_plot[:1000]
+
+plt.plot(pkt_plot, win_plot)
+plt.xlabel('pkt num')
+plt.ylabel('window size')
+plt.title('slow start')
+plt.show()
 
 # close client
 clientSocket.close()
