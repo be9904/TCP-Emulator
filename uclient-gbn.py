@@ -15,6 +15,9 @@ seq = 0        # initial sequence number
 tdupack_flag = 0 # 3 dup ack trigger
 timeout_flag = 0 # timeout trigger
 
+tri_dup_mode = True
+timeout_mode = True
+
 sent_time = [0 for i in range(2000)]
 dup_count = 0
 
@@ -25,6 +28,8 @@ clientSocket.setblocking(0)
 lost_pkts_td = []
 lost_pkts_to = []
 
+latency_sum = 0
+
 # thread for receiving and handling acks
 def handling_ack():
     print("thread")
@@ -32,6 +37,7 @@ def handling_ack():
     global send_base
     global timeout_flag
     global sent_time
+    global latency_sum
 
     # constants
     alpha = 0.125
@@ -59,7 +65,7 @@ def handling_ack():
             pkt_delay = time.time() - sent_time[send_base]
 
         # timeout detected
-        if pkt_delay > timeout_interval and timeout_flag == 0:
+        if pkt_delay > timeout_interval and timeout_flag == 0 and timeout_mode:
             # always timeout on first packet??
             print("timeout detected:", str(send_base), flush=True)
             print("timeout interval:", str(timeout_interval), flush=True)
@@ -81,7 +87,7 @@ def handling_ack():
             prev_ack = ack_n
 
             # check 3 dup acks
-            if dup_count > 3:
+            if dup_count > 3 and tri_dup_mode:
                 print('***3 dup acks detected***', flush=True)
                 print('-------------------------------------')
                 dup_count = 0
@@ -90,6 +96,8 @@ def handling_ack():
                 continue
                 # retransmit
             
+            latency_sum += pkt_delay
+
             # print('before computation timeout_interval:', str(timeout_interval)) 
             # estimated rtt based on init rtt
             if init_rtt_flag == 1:
@@ -139,7 +147,7 @@ while seq < no_pkt:
         seq = seq + 1
 
         # 3 dup acks
-        if tdupack_flag == 1:
+        if tdupack_flag == 1 and tri_dup_mode:
             # update seq number
             seq = send_base 
             
@@ -161,7 +169,7 @@ while seq < no_pkt:
         time.sleep(0.02)
 
     # retransmission
-    if timeout_flag == 1:
+    if timeout_flag == 1 and timeout_mode:
         # update seq number
         seq = send_base 
         
@@ -179,12 +187,13 @@ while seq < no_pkt:
         seq = seq + 1
         timeout_flag = 0
         
-        
 # terminating thread
 th_handling_ack.join()
 
 print('3 dup loss:', lost_pkts_td)
 print('timeout loss:', lost_pkts_to)
+print('average latency:', latency_sum/no_pkt)
+print('throughput:', no_pkt/latency_sum)
 print ("done")
 print('-------------------------------------')
 

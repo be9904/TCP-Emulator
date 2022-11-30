@@ -8,7 +8,6 @@ serverSocket.bind(('', serverPort))
 print('The server is ready to receive')
 
 rcv_base = 0  # next sequence number we wait for
-dup_count = 0
 
 while True:
     message, clientAddress = serverSocket.recvfrom(2048)
