@@ -12,10 +12,11 @@ no_pkt = 100 # the total number of packets to send
 send_base = 0 # oldest packet sent
 loss_rate = 0.01 # loss rate
 seq = 0        # initial sequence number
+tdupack_flag = 0 # 3 dup ack trigger
 timeout_flag = 0 # timeout trigger
 
 sent_time = [0 for i in range(2000)]
-
+dup_count = 0
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 clientSocket.bind(('', clientPort))
@@ -37,7 +38,8 @@ def handling_ack():
     timeout_interval = 10
     
     # dup count
-    dup_count = 0
+    global dup_count
+    global tdupack_flag
     prev_ack = 0
 
     # pkt delay time
@@ -52,8 +54,6 @@ def handling_ack():
         # update pkt delay time
         if sent_time[send_base] != 0: 
             pkt_delay = time.time() - sent_time[send_base]
-        # elif sent_time[send_base-1] != 0:
-        #     dup_count += 1
         
         # timeout detected
         if pkt_delay > timeout_interval and timeout_flag == 0:
@@ -78,6 +78,7 @@ def handling_ack():
             if dup_count > 3:
                 print('3 dup acks detected', flush=True)
                 dup_count = 0
+                tdupack_flag = 1
                 continue
                 # retransmit
             
@@ -88,7 +89,8 @@ def handling_ack():
             else:
                 estimated_rtt = (1-alpha)*estimated_rtt + alpha*pkt_delay
                 dev_rtt = (1-beta)*dev_rtt + beta*abs(pkt_delay-estimated_rtt)
-            timeout_interval = estimated_rtt + 4*dev_rtt            
+            timeout_interval = estimated_rtt + 4*dev_rtt      
+            print('computed timeout_interval:', str(timeout_interval))      
             #print("timeout interval:", str(timeout_interval), flush=True)
 
             
@@ -101,6 +103,7 @@ def handling_ack():
         
         # break loop on last packet
         if ack_n == no_pkt-1:
+            print('break')
             break
 
 # main
@@ -117,14 +120,32 @@ while seq < no_pkt:
         if random.random() < 1 - loss_rate:
             clientSocket.sendto(str(seq).encode(), (serverIP, serverPort))  
         # update sent time
-        sent_time[seq] = time.time()    
+        sent_time[seq] = time.time()
         # increment seq number
         seq = seq + 1
 
+        # 3 dup acks
+        if tdupack_flag == 1:
+            # update seq number
+            seq = send_base 
+            
+            # retransmit
+            clientSocket.sendto(str(seq).encode(), (serverIP, serverPort))
+            
+            # update sent time
+            sent_time[seq] = time.time()
+            
+            # log seq number
+            print("retransmission(3 dup acks):", str(seq), flush=True)
+            
+            # update seq number and reset timeout flag
+            seq = seq + 1
+            tdupack_flag = 0
+
         # wait
-        # time.sleep(0.1)
+        time.sleep(0.02)
         # print('seq:', seq,", send_base:", send_base)
-        
+
     # retransmission
     if timeout_flag == 1:
         # update seq number
@@ -137,7 +158,7 @@ while seq < no_pkt:
         sent_time[seq] = time.time()
         
         # log seq number
-        print("retransmission:", str(seq), flush=True)
+        print("retransmission(timeout):", str(seq), flush=True)
         
         # update seq number and reset timeout flag
         seq = seq + 1
